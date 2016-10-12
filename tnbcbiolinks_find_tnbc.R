@@ -1,9 +1,13 @@
-
-# N.B work in progress - not yet run
-# legacy data from TCGAquery For manual, see
+# TCGALink manual, see
 # https://bioconductor.org/packages/devel/bioc/vignettes/TCGAbiolinks/inst/doc/tcgaBiolinks.html
-source("https://bioconductor.org/biocLite.R")
-biocLite('TCGAbiolinks')
+
+# TODO remove check when Packrat supported in R 3.3.1
+is.tcga.biolinks.installed <- "TCGAbiolinks" %in% row.names(installed.packages())
+if (!is.tcga.biolinks.installed) {
+  source("https://bioconductor.org/biocLite.R")
+  biocLite('TCGAbiolinks')
+}
+
 library('TCGAbiolinks')
 
 # data.frame listing patients with TNBC
