@@ -15,8 +15,7 @@ brca.patients <- TCGAquery_subtype(tumor = 'brca')
 
 # find triple-negative patients - yields a
 # data.frame with details about each patient
-# TODO - check filter out <NA> values
-
+# This will also filter out NA
 tnbc.patients <- subset(brca.patients,  brca.patients$ER.Status == "Negative" &
                           brca.patients$PR.Status == 'Negative' &
                           brca.patients$HER2.Final.Status == 'Negative')
