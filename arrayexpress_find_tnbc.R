@@ -1,11 +1,18 @@
 # TODO remove check when Packrat supported in R 3.3.1
+source("https://bioconductor.org/biocLite.R")
+
 is.tcga.biolinks.installed <- "ArrayExpress" %in% row.names(installed.packages())
 if (!is.tcga.biolinks.installed) {
-  source("https://bioconductor.org/biocLite.R")
   biocLite('ArrayExpress')
 }
 
+is.limma.installed <- "limma" %in% row.names(installed.packages())
+if (!is.limma.installed) {
+  biocLite('limma')
+}
+
 library('ArrayExpress')
+library('limma')
 sets <- queryAE(keywords = 'triple-negative+breast+cancer', species= 'homo+sapiens')
 
 set.ids <- as.character(sets$ID)
