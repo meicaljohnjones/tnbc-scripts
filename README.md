@@ -5,6 +5,9 @@ breast cancer
 
 ## TODO
 
+### Subtype analysis
+* First read Lehmann 2011 and Chen 2012
+
 * An R script that takes all TNBC data from TCGA and tries to do
 hierarchical clustering on differential gene expression data
 
