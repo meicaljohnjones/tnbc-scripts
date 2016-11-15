@@ -33,3 +33,14 @@ survival.fit <- survfit(survival.obj ~ is.tnbc, data = brca.patients)
 plot(survival.fit, col = c("red", "purple"), xlab = "Days", ylab = "Proportion Surviving")
 legend('topright', c("Other", "TNBC"), col=c("red", "purple"), lty = 1)
 title("Kaplan-Meier curves for\nTriple-Negative vs Other Breast Cancers")
+
+survdiff(survival.obj ~ is.tnbc, data = brca.patients)
+
+brca.coxph <- coxph(survival.obj ~ is.tnbc, data = brca.patients)
+ci <- confint(brca.coxph)
+tnbc.risk.relative.to.other.brca <- exp(cbind(coef(brca.coxph), ci))
+tnbc.risk.relative.to.other.brca
+
+# test proportional hazards hypothesis - p value too small
+cox.zph(brca.coxph)
+plot(cox.zph(brca.coxph), var = "is.tnbcTRUE")
