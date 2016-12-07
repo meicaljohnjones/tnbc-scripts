@@ -1,0 +1,98 @@
+---
+title: "Creating a Query Gene Signature for Triple-Negative Breast Cancer from TCGA data"
+author: Mr Michael J. Jones
+output: html_document
+---
+
+## Introduction
+
+In order to perform Gene Expression Connectivity Map, we first require a Query Gene Signature which 
+provides a ranked list of genes or probe IDs that represent significantly up-regulated or down-regulated 
+genes between a diseased and a control state. In this case, we wish to create a query gene signature to 
+describe significantly differentially expressed genes in Triple-Negative Breast Cancer.
+
+Because of the heterogeneity of Triple-Negative Breast Cancer, subsequently, we would like to create a set 
+of query gene signatures, each for one of six different subtypes of the disease identified previously by Lehmann et al.
+
+<!-- Add reference somehow -->
+## Packages Used
+
+Firstly, let us create this convenience function to conditionally install packages we need.
+
+```{r}
+runIfNotInstalled <- function(packageName, fun) {
+  if (! packageName %in% installed.packages()) {
+    fun()
+  }
+}
+```
+
+Data is collected from 'The Cancer Genome Atlas' using the bioconductor package `TCGAbiolinks`. We will use this package 
+to download RNA-seq data for Triple-Negative Breast Cancer and normal tissue. This package has the added benefit of being able of being able to perform differntial expression analysis by itself.
+
+```{r importtcga}
+runIfNotInstalled("TCGAbiolinks", function() {
+  source("http://bioconductor.org/biocLite.R")
+  biocLite("TCGAbiolinks")
+})
+library("TCGAbiolinks")
+```
+
+
+
+## Analysis
+
+The analysis below is derived 'TCGA Downstream Analysis: Case Studies' from the bioconductor documentation for TCGABiolinks. <https://bioconductor.org/packages/devel/bioc/vignettes/TCGAbiolinks/inst/doc/tcgaBiolinks.html>
+
+```{r downloadbrca}
+query <- GDCquery(project = "TCGA-BRCA",
+  data.category = "Transcriptome Profiling",
+  data.type = "Gene Expression Quantification",
+  workflow.type = "HTSeq - Counts")
+GDCdownload(query)
+data <- GDCprepare(query)
+```
+
+This may take some time to download.
+
+NOw we can retrieve subtype information
+
+```{r subtypeinfo}
+dataSubt <- TCGAquery_subtype(tumor = "BRCA")
+```
+
+as well as the clinical data
+```{r clinicaldata}
+dataClin <- GDCquery_clinic(project = "TCGA-BRCA","clinical") 
+```
+
+Here, we separate the data into both Solid Tumour (TP) and Normal Tissue (NT) for differential expression analysis
+```{r}
+dataSmTP <- TCGAquery_SampleTypes(query$results[[1]]$cases,"TP")
+dataSmNT <- TCGAquery_SampleTypes(query$results[[1]]$cases,"NT")
+```
+
+Now we may perform the differential expression analysis
+```{r}
+dataPrep <- TCGAanalyze_Preprocessing(object = data, cor.cut = 0.6)                      
+
+dataNorm <- TCGAanalyze_Normalization(tabDF = dataPrep,
+                                      geneInfo = geneInfo,
+                                      method = "gcContent")                
+
+dataFilt <- TCGAanalyze_Filtering(tabDF = dataNorm,
+                                  method = "quantile", 
+                                  qnt.cut =  0.25)   
+
+dataDEGs <- TCGAanalyze_DEA(mat1 = dataFilt[,dataSmNT],
+                            mat2 = dataFilt[,dataSmTP],
+                            Cond1type = "Normal",
+                            Cond2type = "Tumor",
+                            fdr.cut = 0.01 ,
+                            logFC.cut = 1,
+                            method = "glmLRT")  
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
