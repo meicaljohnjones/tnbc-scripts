@@ -57,14 +57,11 @@ query <- GDCquery(project = "TCGA-BRCA",
 GDCdownload(query, chunks.per.download = 100)
 
 data <- GDCprepare(query)
-
-# Prepare expression matrix with geneID in the rows and samples (barcode) in the columns
-BRCAMatrix <- assay(data)
 ```
 
 This may take some time to download.
 
-NOw we can retrieve subtype information
+Now we can retrieve subtype information
 
 ```{r subtypeinfo}
 dataSubt <- TCGAquery_subtype(tumor = "BRCA")
@@ -75,16 +72,43 @@ as well as the clinical data
 dataClin <- GDCquery_clinic(project = "TCGA-BRCA","clinical") 
 ```
 
+## Filtering out the Triple-Negative Breast Cancer data
+Now that we have all Breast Cancer TCGA data, we need to filter it such that we are left with the Triple-Negative Breast Cancer data.
+
+```{r filtertnbc}
+
+er.negative.status <- !is.na(data@colData$subtype_ER.Status) & data@colData$subtype_ER.Status == 'Negative'
+pr.negative.status <- !is.na(data@colData$subtype_PR.Status) & data@colData$subtype_PR.Status == 'Negative'
+her2.negative.status <- !is.na(data@colData$subtype_HER2.Final.Status) &
+  data@colData$subtype_HER2.Final.Status == 'Negative'
+
+tnbc.status <- er.negative.status & pr.negative.status & her2.negative.status
+
+```
+
+This leaves us with `r length(which(tnbc.status))` TNBC profiles. Let us filter out this data so we are only
+analysing the TNBC profiles.
+
+```{r tnbcdata}
+tnbc.data <- data[which(tnbc.status),]
+```
+
+## Analysis
+<!-- TODO make sure only TNBC data being analysed -->
+
 Here, we separate the data into both Solid Tumour (TP) and Normal Tissue (NT) for differential expression analysis
 ```{r}
-dataSmTP <- TCGAquery_SampleTypes(query$results[[1]]$cases,"TP")
-dataSmNT <- TCGAquery_SampleTypes(query$results[[1]]$cases,"NT")
+dataSmTP <- TCGAquery_SampleTypes(colnames(tnbc.data), "TP")
+dataSmNT <- TCGAquery_SampleTypes(colnames(tnbc.data), "NT")
 ```
 
 Now we may perform the differential expression analysis
 ```{r}
-dataDEGs <- TCGAanalyze_DEA(mat1 = BRCAMatrix[,dataSmNT],
-                            mat2 = BRCAMatrix[,dataSmTP],
+# Prepare expression matrix with geneID in the rows and samples (barcode) in the columns
+TNBCMatrix <- assay(tnbc.data)
+
+dataDEGs <- TCGAanalyze_DEA(mat1 = TNBCMatrix[,dataSmNT],
+                            mat2 = TNBCMatrix[,dataSmTP],
                             Cond1type = "Normal",
                             Cond2type = "Tumor",
                             fdr.cut = 0.01 ,
