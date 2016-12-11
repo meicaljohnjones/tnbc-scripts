@@ -31,11 +31,15 @@ Data is collected from 'The Cancer Genome Atlas' using the bioconductor package 
 to download RNA-seq data for Triple-Negative Breast Cancer and normal tissue. This package has the added benefit of being able of being able to perform differntial expression analysis by itself.
 
 ```{r importtcga}
-runIfNotInstalled("TCGAbiolinks", function() {
-  source("http://bioconductor.org/biocLite.R")
-  biocLite("TCGAbiolinks")
-})
+source("http://bioconductor.org/biocLite.R")
+
+
+runIfNotInstalled("TCGAbiolinks", function() biocLite("TCGAbiolinks"))
 library("TCGAbiolinks")
+
+runIfNotInstalled("SummarizedExperiment", function() biocLite("SummarizedExperiment"))
+library("SummarizedExperiment")
+
 ```
 
 
@@ -48,9 +52,14 @@ The analysis below is derived 'TCGA Downstream Analysis: Case Studies' from the 
 query <- GDCquery(project = "TCGA-BRCA",
   data.category = "Transcriptome Profiling",
   data.type = "Gene Expression Quantification",
-  workflow.type = "HTSeq - Counts")
-GDCdownload(query)
+  workflow.type = "HTSeq - FPKM-UQ"
+) 
+GDCdownload(query, chunks.per.download = 100)
+
 data <- GDCprepare(query)
+
+# Prepare expression matrix with geneID in the rows and samples (barcode) in the columns
+BRCAMatrix <- assay(data)
 ```
 
 This may take some time to download.
@@ -74,18 +83,8 @@ dataSmNT <- TCGAquery_SampleTypes(query$results[[1]]$cases,"NT")
 
 Now we may perform the differential expression analysis
 ```{r}
-dataPrep <- TCGAanalyze_Preprocessing(object = data, cor.cut = 0.6)                      
-
-dataNorm <- TCGAanalyze_Normalization(tabDF = dataPrep,
-                                      geneInfo = geneInfo,
-                                      method = "gcContent")                
-
-dataFilt <- TCGAanalyze_Filtering(tabDF = dataNorm,
-                                  method = "quantile", 
-                                  qnt.cut =  0.25)   
-
-dataDEGs <- TCGAanalyze_DEA(mat1 = dataFilt[,dataSmNT],
-                            mat2 = dataFilt[,dataSmTP],
+dataDEGs <- TCGAanalyze_DEA(mat1 = BRCAMatrix[,dataSmNT],
+                            mat2 = BRCAMatrix[,dataSmTP],
                             Cond1type = "Normal",
                             Cond2type = "Tumor",
                             fdr.cut = 0.01 ,
