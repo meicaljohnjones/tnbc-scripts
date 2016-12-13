@@ -1,7 +1,8 @@
 ---
-title: "Creating a Query Gene Signature for Triple-Negative Breast Cancer from TCGA data"
-author: Mr Michael J. Jones
-output: html_document
+title: Creating a Query Gene Signature for Triple-Negative Breast Cancer from TCGA
+  data
+author: "Mr Michael J. Jones"
+output: pdf_document
 ---
 
 ## Introduction
@@ -46,15 +47,19 @@ library("SummarizedExperiment")
 
 ## Analysis
 
-The analysis below is derived 'TCGA Downstream Analysis: Case Studies' from the bioconductor documentation for TCGABiolinks. <https://bioconductor.org/packages/devel/bioc/vignettes/TCGAbiolinks/inst/doc/tcgaBiolinks.html>
+The analysis below is derived 'TCGA Downstream Analysis: Case Studies' from the bioconductor documentation for TCGABiolinks. <https://bioconductor.org/packages/devel/bioc/vignettes/TCGAbiolinks/inst/doc/tcgaBiolinks.html>.
+
+The data we download is `FPKM-UQ`, meaning that it's upper-quartile normalized so that 
 
 ```{r downloadbrca}
 query <- GDCquery(project = "TCGA-BRCA",
   data.category = "Transcriptome Profiling",
   data.type = "Gene Expression Quantification",
   workflow.type = "HTSeq - FPKM-UQ"
-) 
-GDCdownload(query, chunks.per.download = 100)
+)
+
+data.already.downloaded <- file.exists("GDCdata/")
+if (!data.already.downloaded) GDCdownload(query, chunks.per.download = 100)
 
 data <- GDCprepare(query)
 ```
@@ -94,13 +99,17 @@ tnbc.data <- data[which(tnbc.status),]
 ```
 
 ## Analysis
-<!-- TODO make sure only TNBC data being analysed -->
 
 Here, we separate the data into both Solid Tumour (TP) and Normal Tissue (NT) for differential expression analysis
 ```{r}
 dataSmTP <- TCGAquery_SampleTypes(colnames(tnbc.data), "TP")
 dataSmNT <- TCGAquery_SampleTypes(colnames(tnbc.data), "NT")
 ```
+
+<!-- 
+  TODO look at vignette for TCGAbiolinks - do I need to normalize data? 
+  Ask Shu-Dong, perhaps
+-->
 
 Now we may perform the differential expression analysis
 ```{r}
@@ -113,8 +122,50 @@ dataDEGs <- TCGAanalyze_DEA(mat1 = TNBCMatrix[,dataSmNT],
                             Cond2type = "Tumor",
                             fdr.cut = 0.01 ,
                             logFC.cut = 1,
-                            method = "glmLRT")  
+                            method = "glmLRT") 
+
+knitr::kable(dataDEGs, format = "markdown")
 ```
+
+## Create TNBC Query Gene Signature
+
+In order for us to create a Query Gene Signature that's compatible with the the reference profiles, we need 
+to convert the ensembl IDs into the equivalent probe IDs from the Affymetrix HG-U133A microarray platform.
+
+To do this, we use the `biomaRt` package
+```{r installbiomart}
+runIfNotInstalled("biomaRt", function() biocLite("biomaRt"))
+library("biomaRt")
+ids <- rownames(dataDEGs)
+mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
+summary <- getBM(filters = 'ensembl_gene_id', attributes= 
+                   c("ensembl_gene_id", "affy_hg_u133_plus_2"),
+                 values=ids,mart= mart)
+
+```
+
+There may be cases where there are multiple probe IDs for each ensign gene id. Let's remove duplicates:
+
+```{r removeduplicateids}
+non.duplicate.rows <- which(!duplicated(summary$ensembl_gene_id))
+non.duplicate.ensembl.ids <- summary[non.duplicate.rows,]
+```
+
+and we can append these data to our differential expression analysis `data.frame`
+```{r appendbiomarttodegs}
+data.degs.with.affy.probes <- data.frame(non.duplicate.ensembl.ids, dataDEGs)
+knitr::kable(data.degs.with.affy.probes, format = "markdown")
+```
+<!-- 
+  TODO remove those without affy probes
+  TODO create ordered query gene signature
+  TODO create unordered query gene signature
+-->
+
+<!-- 
+  TODO find Gene Ontology for pathway maybe
+  TODO split up TNBC into subtypes and create Query Gene Signatures for those
+-->
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
