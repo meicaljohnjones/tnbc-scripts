@@ -111,7 +111,7 @@ dataSmNT <- TCGAquery_SampleTypes(colnames(tnbc.data), "NT")
   Ask Shu-Dong, perhaps
 -->
 
-Now we may perform the differential expression analysis
+Now we may perform the differential expression analysis.
 ```{r}
 # Prepare expression matrix with geneID in the rows and samples (barcode) in the columns
 TNBCMatrix <- assay(tnbc.data)
@@ -139,7 +139,7 @@ library("biomaRt")
 ids <- rownames(dataDEGs)
 mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
 summary <- getBM(filters = 'ensembl_gene_id', attributes= 
-                   c("ensembl_gene_id", "affy_hg_u133_plus_2"),
+                   c("ensembl_gene_id", "affy_hg_u133_plus_2", "description"),
                  values=ids,mart= mart)
 
 ```
@@ -156,11 +156,34 @@ and we can append these data to our differential expression analysis `data.frame
 data.degs.with.affy.probes <- data.frame(non.duplicate.ensembl.ids, dataDEGs)
 knitr::kable(data.degs.with.affy.probes, format = "markdown")
 ```
-<!-- 
-  TODO remove those without affy probes
-  TODO create ordered query gene signature
-  TODO create unordered query gene signature
--->
+
+Next, we must remove the records without corresponding probe IDs for each ensembl gene.
+
+```{r removeblankprobe}
+non.blank.probe.ids <- !is.na(data.degs.with.affy.probes$affy_hg_u133_plus_2) & data.degs.with.affy.probes$affy_hg_u133_plus_2 != ""
+data.degs.non.empty.affy <- data.degs.with.affy.probes[which(non.blank.probe.ids),]
+```
+
+Next we will create the unordered query gene signature by taking the signs of each of the `logFC` and making them `-1` or `+1`
+
+```{r unorderedqgs}
+data.degs.non.empty.affy <- data.frame(data.degs.non.empty.affy, unordered=sign(data.degs.non.empty.affy$logFC))
+```
+
+And to create the orderd query gene signature we multiply the rank of each logFC by the unordered query gene signature.
+
+```{r orderedqgs}
+fold.change <- data.degs.non.empty.affy$logFC
+
+ranking <- list(index=order(decreasing=T,abs(fold.change)), rank=1:length(fold.change))
+
+order.by.fc <- data.degs.non.empty.affy[ranking$index,]
+data.degs.non.empty.affy <- data.frame(order.by.fc, ordered=order.by.fc$unordered * 1:length(fold.change))
+
+resulting.qgs <- data.frame(probe.id=data.degs.non.empty.affy$affy_hg_u133_plus_2, unordered=data.degs.non.empty.affy$unordered, ordered=data.degs.non.empty.affy$ordered)
+knitr::kable(resulting.qgs, format = "markdown")
+```
+
 
 <!-- 
   TODO find Gene Ontology for pathway maybe
