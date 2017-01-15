@@ -193,3 +193,21 @@ knitr::kable(resulting.qgs, format = "markdown")
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+## Perform Connectivity Map
+
+Now that we have the two query gene signatures, we are able to perform connectivity map. `sscMap` is a Java-based application and can be downloaded from <http://purl.oclc.org/NET/sscMap>.
+<!-- add some more stuff here about sscMap -->
+
+sscMap was run using default settings using both the ordered and unordered query gene signatures generated abovealong with 10,000 randomly generated query gene signatures to provide statistical significance against 6104 reference profiles which make up 1,309 individual reference sets. The threshold value for a statistically significant connection is calculated as one over the number of refernce sets, which is `1.0 / 1309` or $$7.64 * 10^{-4}$$.
+
+Of the two query gene signatures generated, no connection scores calculated proved to be statistically significant.
+
+![Ordered TNBC Score.](./images/tnbc-ordered-score.png)
+![Unordered TNBC Score.](./images/tnbc-unordered-score.png)
+
+_Nocodazole_ showed to have a negative set connection score of -0.2855 which might imply that it would be protective
+against Triple-Negative Breast Cancer but for the fact that its p- value was 0.0038. Conversely, _BCB000040_ might have proved to induce Triple-Negative Breast Cancer with a positive connection set connection score of 0.2485 howeverit too displayed a p-value inadequate to refute the null hypothesis of 0.0036.
+
+These results imply that none of the perturbagens provided in the CMAP database could provide therapeutic benefit for Triple-Negative Breast Cancer. Further work would require performing connectivity map against a larger set of reference profiles. To follow, performing connectivity map against subclasses of Triple-Negative Breast Cancer could provide more targeted therapies.
+These results imply that none of the perturbagens provided in the CMAP database could provide therapeutic benefit for Triple-Negative Breast Cancer. Further work would require performing connectivity map against a larger set of reference profiles. To follow, performing connectivity map against subclasses of Triple-Negative Breast Cancer could provide more targeted therapies.
